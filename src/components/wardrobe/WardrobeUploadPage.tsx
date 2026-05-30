@@ -295,8 +295,8 @@ export function WardrobeUploadPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {WARDROBE_CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.emoji} {c.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
