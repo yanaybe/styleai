@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         headers: {
           Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
           "Content-Type": "application/json",
-          Prefer: "wait=90",
+          Prefer: "wait=60",
         },
         body: JSON.stringify({
           input: {
