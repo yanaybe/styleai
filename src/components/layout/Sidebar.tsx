@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Sparkles, Home, Shirt, Calendar, History, Palette,
   Camera, BarChart2, Settings, LogOut, Heart,
-  ShoppingBag, Luggage,
+  ShoppingBag, Luggage, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +17,12 @@ const navItems = [
     icon: Home,
     label: "Today",
     description: "Daily outfit hub & overview",
+  },
+  {
+    href: "/avatar",
+    icon: User,
+    label: "Me",
+    description: "Your photos for AI try-on",
   },
   {
     href: "/wardrobe",

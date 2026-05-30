@@ -6,16 +6,17 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home, Shirt, Calendar, ShoppingBag, MoreHorizontal,
   Camera, History, Palette, BarChart2, Settings,
-  Luggage, Heart, X, LogOut, Sparkles,
+  Luggage, Heart, X, LogOut, Sparkles, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 const mainNav = [
-  { href: "/dashboard", icon: Home,        label: "Today" },
-  { href: "/wardrobe",  icon: Shirt,        label: "Closet" },
-  { href: "/outfits",   icon: Calendar,     label: "Outfits" },
-  { href: "/shopping",  icon: ShoppingBag,  label: "Shop" },
+  { href: "/dashboard", icon: Home,       label: "Today" },
+  { href: "/avatar",    icon: User,        label: "Me" },
+  { href: "/wardrobe",  icon: Shirt,       label: "Closet" },
+  { href: "/outfits",   icon: Calendar,    label: "Outfits" },
+  { href: "/shopping",  icon: ShoppingBag, label: "Shop" },
 ];
 
 const moreFeatures = [
@@ -26,6 +27,7 @@ const moreFeatures = [
     description: "Upload any look — I'll recreate it from your wardrobe",
     color: "bg-rose-50 text-rose-500",
   },
+
   {
     href: "/style-profile",
     icon: Palette,

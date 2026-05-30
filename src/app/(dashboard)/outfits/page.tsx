@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { OutfitCalendarPage } from "@/components/outfits/OutfitCalendarPage";
 
@@ -9,5 +10,10 @@ export default async function OutfitsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return <OutfitCalendarPage userId={user.id} />;
+  const primaryAvatar = await prisma.userAvatar.findFirst({
+    where: { userId: user.id, imageType: "full_body", isPrimary: true },
+    select: { imageUrl: true },
+  }).catch(() => null);
+
+  return <OutfitCalendarPage userId={user.id} avatarUrl={primaryAvatar?.imageUrl ?? null} />;
 }
