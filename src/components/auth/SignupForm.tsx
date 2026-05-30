@@ -38,10 +38,8 @@ export function SignupForm() {
     }
 
     if (data.session) {
-      // Email confirmation off — wait for cookie, then go to onboarding
-      setTimeout(() => {
-        window.location.href = "/onboarding";
-      }, 200);
+      // Email confirmation off — redirect to onboarding
+      window.location.replace("/onboarding");
       return;
     }
 

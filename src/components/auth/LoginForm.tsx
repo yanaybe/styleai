@@ -30,10 +30,8 @@ export function LoginForm() {
       return;
     }
 
-    // Wait for cookie to flush, then hard redirect
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 200);
+    // Redirect immediately — Supabase handles session timing
+    window.location.replace("/dashboard");
   }
 
   return (
