@@ -94,7 +94,10 @@ export function WardrobeUploadPage() {
           const fd = new FormData();
           fd.append("file", item.file);
           const upRes = await fetch("/api/upload/wardrobe", { method: "POST", body: fd });
-          if (!upRes.ok) throw new Error("Upload failed");
+          if (!upRes.ok) {
+            const body = await upRes.json().catch(() => ({}));
+            throw new Error(`Upload failed (${upRes.status}): ${body?.error ?? "unknown"}`);
+          }
           const { url: imageUrl } = await upRes.json();
 
           // Analyze
@@ -104,7 +107,10 @@ export function WardrobeUploadPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageUrl }),
           });
-          if (!anRes.ok) throw new Error("Analysis failed");
+          if (!anRes.ok) {
+            const body = await anRes.json().catch(() => ({}));
+            throw new Error(`Analysis failed (${anRes.status}): ${body?.error ?? "unknown"}`);
+          }
           const analysis: AIAnalysis = await anRes.json();
 
           setFiles((prev) => prev.map((f) =>
