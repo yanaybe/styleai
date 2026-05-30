@@ -27,7 +27,7 @@ Always return valid JSON with no markdown formatting.`,
         content: [
           {
             type: "image_url",
-            image_url: { url: imageUrl, detail: "high" },
+            image_url: { url: imageUrl, detail: "auto" },
           },
           {
             type: "text",
@@ -53,7 +53,8 @@ Always return valid JSON with no markdown formatting.`,
     temperature: 0.3,
   });
 
-  const text = response.choices[0]?.message?.content ?? "{}";
+  const raw = response.choices[0]?.message?.content ?? "{}";
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try {
     return JSON.parse(text);
   } catch {
@@ -163,7 +164,7 @@ Return structured JSON only.`,
         content: [
           {
             type: "image_url",
-            image_url: { url: imageUrl, detail: "high" },
+            image_url: { url: imageUrl, detail: "auto" },
           },
           {
             type: "text",

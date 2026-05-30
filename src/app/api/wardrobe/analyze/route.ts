@@ -10,8 +10,12 @@ export async function POST(request: Request) {
   const { imageUrl } = await request.json();
   if (!imageUrl) return NextResponse.json({ error: "imageUrl required" }, { status: 400 });
 
-  const analysis = await analyzeClothingItem(imageUrl);
-  if (!analysis) return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
-
-  return NextResponse.json(analysis);
+  try {
+    const analysis = await analyzeClothingItem(imageUrl);
+    if (!analysis) return NextResponse.json({ error: "JSON parse failed — GPT returned unexpected format" }, { status: 500 });
+    return NextResponse.json(analysis);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
