@@ -45,13 +45,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const item = await prisma.wardrobeItem.create({
-    data: {
-      ...parsed.data,
-      aiAnalysis: parsed.data.aiAnalysis ? parsed.data.aiAnalysis as object : undefined,
-      userId: user.id,
-    },
-  });
-
-  return NextResponse.json(item, { status: 201 });
+  try {
+    const item = await prisma.wardrobeItem.create({
+      data: {
+        ...parsed.data,
+        aiAnalysis: parsed.data.aiAnalysis ? parsed.data.aiAnalysis as object : undefined,
+        userId: user.id,
+      },
+    });
+    return NextResponse.json(item, { status: 201 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
