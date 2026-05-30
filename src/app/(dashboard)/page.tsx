@@ -8,13 +8,13 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  let profile = await prisma.userProfile.findUnique({
+  // Auto-create profile if first time (upsert)
+  const profile = await prisma.userProfile.upsert({
     where: { userId: user.id },
+    create: { userId: user.id, name: "Talia", onboardingDone: false },
+    update: {},
     include: { styleProfile: true },
   }).catch(() => null);
-
-  if (!profile) redirect("/onboarding");
-  if (!profile.onboardingDone) redirect("/onboarding");
 
   const [wardrobeCount, recentRecommendations] = await Promise.all([
     prisma.wardrobeItem.count({
@@ -25,19 +25,22 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 3,
       include: {
-        outfit: {
-          include: { items: { include: { item: true } } },
-        },
+        outfit: { include: { items: { include: { item: true }, take: 4 } } },
       },
     }).catch(() => []),
   ]);
 
   return (
     <DashboardHome
-      user={{ name: profile.name ?? user.email ?? "there", email: user.email ?? "" }}
+      user={{ name: "Talia", email: user.email ?? "" }}
       wardrobeCount={wardrobeCount}
       recommendations={recentRecommendations}
-      profile={profile}
+      onboardingDone={profile?.onboardingDone ?? false}
+      profile={{
+        whatsappVerified: profile?.whatsappVerified ?? false,
+        phone: profile?.phone ?? null,
+        city: profile?.city ?? null,
+      }}
     />
   );
 }

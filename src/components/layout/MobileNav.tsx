@@ -2,36 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Shirt, Calendar, Palette, Settings } from "lucide-react";
+import { Home, Shirt, Calendar, Camera, ShoppingBag, Settings, BarChart2, Heart, Luggage } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", icon: Home, label: "Today" },
-  { href: "/wardrobe", icon: Shirt, label: "Closet" },
-  { href: "/outfits", icon: Calendar, label: "Calendar" },
-  { href: "/style-profile", icon: Palette, label: "Style" },
-  { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/dashboard",  icon: Home,        label: "Today" },
+  { href: "/wardrobe",   icon: Shirt,        label: "Closet" },
+  { href: "/outfits",    icon: Calendar,     label: "Outfits" },
+  { href: "/inspiration",icon: Camera,       label: "Inspo" },
+  { href: "/shopping",   icon: ShoppingBag,  label: "Shop" },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-sm border-t border-border md:hidden">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="flex items-center justify-around h-14 px-1">
         {navItems.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const active =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && item.href !== "/outfits" && pathname.startsWith(item.href)) ||
+            (item.href === "/outfits" && pathname === "/outfits");
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-150",
+                "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px]",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <item.icon className={cn("w-5 h-5", active && "fill-primary/10")} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <item.icon className={cn("w-5 h-5 transition-all", active && "scale-110")} />
+              <span className={cn("text-[9px] font-medium", active ? "text-primary" : "text-muted-foreground/70")}>
+                {item.label}
+              </span>
             </Link>
           );
         })}

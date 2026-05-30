@@ -18,17 +18,22 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "StyleAI — Your AI Personal Stylist",
+    default: "StyleAI — Talia's Personal Stylist",
     template: "%s | StyleAI",
   },
-  description:
-    "Wake up to a perfectly styled outfit every morning. StyleAI is your AI personal stylist on WhatsApp — personalized to your wardrobe, the weather, and your day.",
-  keywords: ["AI stylist", "personal stylist", "outfit recommender", "wardrobe AI", "fashion app"],
-  openGraph: {
-    title: "StyleAI — Your AI Personal Stylist",
-    description: "Wake up to a perfectly styled outfit every morning.",
-    type: "website",
+  description: "Talia's personal AI stylist.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "StyleAI",
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
