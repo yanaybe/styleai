@@ -50,7 +50,7 @@ export function DashboardHome({ user, wardrobeCount, recommendations, profile }:
             {today}
           </p>
           <h1 className="font-heading text-3xl sm:text-4xl font-semibold">
-            {greeting}, {firstName} ✨
+            {greeting}, Talia ✨
           </h1>
         </div>
         <Badge variant="secondary" className="self-start sm:self-auto border border-primary/20 bg-secondary text-primary px-3 py-1.5">
@@ -177,9 +177,9 @@ export function DashboardHome({ user, wardrobeCount, recommendations, profile }:
           <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-primary/40" />
           </div>
-          <h3 className="font-heading text-2xl font-semibold mb-2">Your style journey starts here</h3>
+          <h3 className="font-heading text-2xl font-semibold mb-2">Talia&apos;s closet is waiting ✨</h3>
           <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-            Upload at least 5 items from your wardrobe to unlock your first AI outfit recommendation.
+            Upload at least 5 items from your wardrobe and I&apos;ll start styling you every morning.
           </p>
           <Link href="/wardrobe/upload">
             <Button className="shadow-rose gap-2">

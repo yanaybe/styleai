@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   }).catch(() => null);
 
   if (!userProfile) {
-    await sendWhatsAppMessage(from, "Hi! I don't have your account linked yet. Please visit styleai.app to connect your WhatsApp. ✨");
+    await sendWhatsAppMessage(from, "Hi Talia! 👋 I don't have your number linked yet. Go to Settings in StyleAI to connect your WhatsApp. ✨");
     return new Response("OK", { status: 200 });
   }
 
