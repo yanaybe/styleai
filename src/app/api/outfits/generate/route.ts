@@ -12,6 +12,9 @@ export async function POST(request: Request) {
   const { date, eventDescription } = await request.json().catch(() => ({}));
   const targetDate = date ? new Date(date) : new Date();
 
+  await prisma.userProfile.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} }).catch(() => null);
+
+  try {
   const [profile, wardrobeItems, styleProfile, recentRecs] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: user.id } }),
     prisma.wardrobeItem.findMany({
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
   });
 
   if (!aiOutfits?.length) {
-    return NextResponse.json({ error: "Failed to generate outfits" }, { status: 500 });
+    return NextResponse.json({ error: "AI returned no outfits — try again" }, { status: 500 });
   }
 
   const created = await Promise.all(
@@ -103,5 +106,12 @@ export async function POST(request: Request) {
   );
 
   const results = created.filter(Boolean);
+  if (!results.length) {
+    return NextResponse.json({ error: "AI suggested items not found in your wardrobe — try again" }, { status: 500 });
+  }
   return NextResponse.json({ recommendations: results, weather });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }

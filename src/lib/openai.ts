@@ -107,7 +107,8 @@ Return JSON array with 3 outfits:
     temperature: 0.7,
   });
 
-  const text = response.choices[0]?.message?.content ?? "[]";
+  const raw = response.choices[0]?.message?.content ?? "[]";
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try {
     return JSON.parse(text);
   } catch {
