@@ -25,10 +25,11 @@ interface AvatarPageProps {
 }
 
 const TIPS = [
-  "Stand in good lighting facing forward",
-  "Wear fitted, plain clothes so the AI can see your shape",
-  "Full body shot — head to toe works best",
-  "Neutral background if possible",
+  "Stand straight, facing forward, full body visible (head to toe)",
+  "Wear fitted clothes or activewear — the AI replaces them digitally",
+  "Good lighting is everything — natural daylight or a bright room",
+  "Neutral or plain background makes results look more beautiful",
+  "The better your photo, the more stunning the try-on results ✨",
 ];
 
 export function AvatarPage({ initialAvatars }: AvatarPageProps) {

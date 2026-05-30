@@ -114,7 +114,7 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
           <div className="absolute bottom-3 left-3 right-3">
             <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2">
               <p className="text-xs font-medium">{outfitName}</p>
-              <p className="text-[10px] text-muted-foreground">AI-generated try-on ✨</p>
+              <p className="text-[10px] text-muted-foreground">You look stunning, Talia ✨</p>
             </div>
           </div>
         </div>

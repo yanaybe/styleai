@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+function beautifyUrl(rawUrl: string): string {
+  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  if (!cloud) return rawUrl;
+  // Fetch the try-on image through Cloudinary with beauty enhancements:
+  // e_improve: auto brightness/contrast/color
+  // e_sharpen:40: crisp details
+  // e_viesus_correct: professional photo correction
+  // q_auto:best: maximum quality
+  const encoded = encodeURIComponent(rawUrl);
+  return `https://res.cloudinary.com/${cloud}/image/fetch/e_improve,e_viesus_correct,e_sharpen:40,q_auto:best/${encoded}`;
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -10,92 +22,98 @@ export async function POST(request: Request) {
   const { outfitId, avatarUrl, itemIds } = await request.json();
 
   if (!avatarUrl) {
-    return NextResponse.json({ error: "Upload a full-body photo first in the Me tab" }, { status: 400 });
+    return NextResponse.json({ error: "Upload a full-body photo in the 'Me' tab first." }, { status: 400 });
   }
 
   if (!process.env.REPLICATE_API_TOKEN) {
-    return NextResponse.json({ error: "Try-on service not configured yet" }, { status: 503 });
+    return NextResponse.json({ error: "Try-on service not configured." }, { status: 503 });
   }
 
-  // Get wardrobe items to try on
   const items = await prisma.wardrobeItem.findMany({
     where: { id: { in: itemIds }, userId: user.id },
     select: { id: true, name: true, category: true, imageUrl: true },
   });
 
-  // Filter to wearable categories for try-on (tops, bottoms, dresses, jackets)
-  const tryOnItems = items.filter((i) =>
-    ["TOPS", "PANTS", "SHORTS", "SKIRTS", "DRESSES", "JACKETS"].includes(i.category)
-  );
+  // Prefer dress > top > jacket for the main garment
+  const priority = ["DRESSES", "TOPS", "JACKETS", "SKIRTS", "PANTS", "SHORTS"];
+  const garment = priority
+    .map((cat) => items.find((i) => i.category === cat))
+    .find(Boolean) ?? items[0];
 
-  if (!tryOnItems.length) {
-    return NextResponse.json({ error: "No wearable clothing items to try on" }, { status: 400 });
+  if (!garment) {
+    return NextResponse.json({ error: "No wearable items found in this outfit." }, { status: 400 });
   }
 
-  // Use first garment (top or dress) for try-on
-  // Chain: top → then bottom on resulting image
-  const garment = tryOnItems.find((i) => ["TOPS", "DRESSES", "JACKETS"].includes(i.category))
-    ?? tryOnItems[0];
-
-  const category = ["DRESSES", "TOPS"].includes(garment.category) ? "upper_body"
-    : ["PANTS", "SHORTS", "SKIRTS"].includes(garment.category) ? "lower_body"
-    : "upper_body";
+  const category =
+    ["DRESSES"].includes(garment.category) ? "dresses"
+    : ["TOPS", "JACKETS"].includes(garment.category) ? "upper_body"
+    : "lower_body";
 
   try {
-    // Call Replicate IDM-VTON model
-    const replicateRes = await fetch("https://api.replicate.com/v1/models/cuuupid/idm-vton/predictions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-        "Content-Type": "application/json",
-        Prefer: "wait=60",
-      },
-      body: JSON.stringify({
-        input: {
-          human_img: avatarUrl,
-          garm_img: garment.imageUrl,
-          garment_des: `${garment.name} - ${garment.category}`,
-          is_checked: true,
-          is_checked_crop: false,
-          denoise_steps: 30,
-          seed: 42,
-          category,
+    const replicateRes = await fetch(
+      "https://api.replicate.com/v1/models/cuuupid/idm-vton/predictions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+          "Content-Type": "application/json",
+          Prefer: "wait=90",
         },
-      }),
-    });
+        body: JSON.stringify({
+          input: {
+            human_img: avatarUrl,
+            garm_img: garment.imageUrl,
+            garment_des: `Beautiful ${garment.name}, styled elegantly`,
+            is_checked: true,
+            is_checked_crop: false,
+            denoise_steps: 45,
+            seed: 12345,
+            category,
+          },
+        }),
+      }
+    );
 
     if (!replicateRes.ok) {
       const err = await replicateRes.json().catch(() => ({}));
-      console.error("Replicate error:", err);
       return NextResponse.json({ error: "Try-on generation failed", detail: err }, { status: 500 });
     }
 
-    const prediction = await replicateRes.json();
+    let prediction = await replicateRes.json();
 
-    // If still processing, poll
-    if (prediction.status === "processing" || prediction.status === "starting") {
-      let result = prediction;
-      let attempts = 0;
-      while (["processing", "starting"].includes(result.status) && attempts < 30) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-          headers: { Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}` },
-        });
-        result = await pollRes.json();
-        attempts++;
-      }
-      if (result.output) {
-        const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-        return NextResponse.json({ tryOnUrl: outputUrl, garmentUsed: garment.name, allItems: items });
-      }
+    // Poll if still processing
+    let attempts = 0;
+    while (["processing", "starting"].includes(prediction.status) && attempts < 40) {
+      await new Promise((r) => setTimeout(r, 2500));
+      const poll = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
+        headers: { Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}` },
+      });
+      prediction = await poll.json();
+      attempts++;
+    }
+
+    if (prediction.error) {
+      return NextResponse.json({ error: `Try-on failed: ${prediction.error}` }, { status: 500 });
+    }
+
+    if (!prediction.output) {
       return NextResponse.json({ error: "Try-on timed out. Try again." }, { status: 504 });
     }
 
-    const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-    return NextResponse.json({ tryOnUrl: outputUrl, garmentUsed: garment.name, allItems: items });
+    const rawUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+
+    // Apply Cloudinary beauty enhancement
+    const tryOnUrl = beautifyUrl(rawUrl);
+
+    return NextResponse.json({
+      tryOnUrl,
+      rawUrl,
+      garmentUsed: garment.name,
+      allItems: items,
+    });
 
   } catch (err) {
     console.error("Try-on error:", err);
-    return NextResponse.json({ error: "Try-on service unavailable" }, { status: 500 });
+    return NextResponse.json({ error: "Try-on service unavailable." }, { status: 500 });
   }
 }
