@@ -55,12 +55,38 @@ export function AvatarPage({ initialAvatars }: AvatarPageProps) {
     reader.readAsDataURL(f);
   }
 
+  async function compressImage(f: File): Promise<File> {
+    return new Promise((resolve) => {
+      const img = document.createElement("img");
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 1600;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], f.name, { type: "image/jpeg" }) : f),
+          "image/jpeg", 0.82
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+      img.src = url;
+    });
+  }
+
   async function upload() {
     if (!file) return;
     setUploading(true);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", compressed);
       fd.append("imageType", "full_body");
 
       const res = await fetch("/api/avatar", { method: "POST", body: fd });
@@ -180,7 +206,7 @@ export function AvatarPage({ initialAvatars }: AvatarPageProps) {
           <p className="text-sm text-muted-foreground mb-3">
             Full body, standing, good lighting
           </p>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={(e) => { e.stopPropagation(); document.getElementById("avatarInput")?.click(); }}>
             <Upload className="w-3.5 h-3.5" />
             Choose photo
           </Button>

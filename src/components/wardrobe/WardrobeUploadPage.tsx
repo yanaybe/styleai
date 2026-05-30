@@ -188,10 +188,13 @@ export function WardrobeUploadPage() {
               styleTags: item.form.styleTags.split(",").map((t) => t.trim()).filter(Boolean),
             }),
           });
-          if (!res.ok) throw new Error();
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(`${res.status}: ${JSON.stringify(body?.error ?? body)}`);
+          }
           saved++;
-        } catch {
-          toast.error(`Failed to save "${item.form.name || "item"}"`);
+        } catch (err) {
+          toast.error(`Failed to save: ${err instanceof Error ? err.message : "unknown"}`);
         }
       })
     );
