@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model UserProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  name             String?
+  phone            String?  @unique
+  timezone         String   @default("UTC")
+  avatarUrl        String?
+  onboardingStep   Int      @default(0)
+  onboardingDone   Boolean  @default(false)
+  whatsappVerified Boolean  @default(false)
+  morningTime      String   @default("07:00")
+  city             String?
+  country          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  styleProfile         StyleProfile?
+  wardrobeItems        WardrobeItem[]
+  outfits              Outfit[]
+  recommendations      OutfitRecommendation[]
+  conversations        WhatsAppConversation[]
+  calendarEvents       CalendarEvent[]
+  avatars              UserAvatar[]
+  inspirations         InspirationImage[]
+  packingLists         PackingList[]
+  shoppingItems        ShoppingItem[]
+  coupleConnectionsOne CoupleConnection[]    @relation("UserOne")
+  coupleConnectionsTwo CoupleConnection[]    @relation("UserTwo")
+
+  @@map("user_profiles")
+}
+
+model StyleProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  favoriteColors      String[]
+  favoriteBrands      String[]
+  styleCategories     String[]
+  workEnvironment     String?
+  dresscode           String?
+  fitPreference       String?
+  modestyLevel        String?
+  pinterestUrl        String?
+  instagramHandle     String?
+  fashionInspirations String[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("style_profiles")
+}
+
+model WardrobeItem {
+  id             String           @id @default(cuid())
+  userId         String
+  name           String
+  category       WardrobeCategory
+  colorPrimary   String?
+  colorSecondary String?
+  pattern        String?
+  material       String?
+  brand          String?
+  formalityLevel String?
+  season         String[]
+  styleTags      String[]
+  imageUrl       String
+  thumbnailUrl   String?
+  aiAnalysis     Json?
+  timesWorn      Int              @default(0)
+  lastWornAt     DateTime?
+  purchasePrice  Float?
+  purchaseDate   DateTime?
+  isActive       Boolean          @default(true)
+  isFavorite     Boolean          @default(false)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user        UserProfile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  outfitItems OutfitItem[]
+
+  @@map("wardrobe_items")
+}
+
+enum WardrobeCategory {
+  TOPS
+  PANTS
+  SHORTS
+  SKIRTS
+  DRESSES
+  JACKETS
+  SHOES
+  BAGS
+  JEWELRY
+  ACCESSORIES
+}
+
+model Outfit {
+  id         String      @id @default(cuid())
+  userId     String
+  name       String?
+  occasion   String?
+  season     String?
+  isSaved    Boolean     @default(false)
+  isFavorite Boolean     @default(false)
+  source     OutfitSource @default(AI_GENERATED)
+  imageUrl   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user            UserProfile            @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  items           OutfitItem[]
+  recommendations OutfitRecommendation[]
+
+  @@map("outfits")
+}
+
+enum OutfitSource {
+  AI_GENERATED
+  USER_CREATED
+  IMPORTED
+}
+
+model OutfitItem {
+  id         String @id @default(cuid())
+  outfitId   String
+  itemId     String
+  layerOrder Int    @default(0)
+
+  outfit Outfit       @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  item   WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("outfit_items")
+}
+
+model OutfitRecommendation {
+  id               String             @id @default(cuid())
+  userId           String
+  outfitId         String?
+  date             DateTime
+  weatherData      Json?
+  reasoning        String?
+  confidenceScore  Float?
+  type             RecommendationType
+  wasWorn          Boolean?
+  rating           OutfitRating?
+  morningMessageId String?
+  createdAt        DateTime           @default(now())
+
+  user   UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  outfit Outfit?     @relation(fields: [outfitId], references: [id])
+
+  @@map("outfit_recommendations")
+}
+
+enum RecommendationType {
+  SAFE
+  STYLISH
+  TRENDY
+}
+
+enum OutfitRating {
+  LOVE_IT
+  LIKE_IT
+  NOT_FOR_ME
+}
+
+model WhatsAppConversation {
+  id        String    @id @default(cuid())
+  userId    String
+  sessionId String    @unique
+  status    String    @default("active")
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  user     UserProfile       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  messages WhatsAppMessage[]
+
+  @@map("whatsapp_conversations")
+}
+
+model WhatsAppMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  direction      String
+  content        String
+  messageType    String
+  twilioSid      String?
+  sentAt         DateTime @default(now())
+
+  conversation WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_messages")
+}
+
+model CalendarEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  date          DateTime
+  time          String?
+  eventType     String?
+  location      String?
+  formalityHint String?
+  source        String   @default("manual")
+  createdAt     DateTime @default(now())
+
+  user UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("calendar_events")
+}
+
+model UserAvatar {
+  id         String   @id @default(cuid())
+  userId     String
+  imageUrl   String
+  imageType  String
+  isPrimary  Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+
+  user UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_avatars")
+}
+
+model InspirationImage {
+  id            String   @id @default(cuid())
+  userId        String
+  imageUrl      String
+  source        String
+  analysis      Json?
+  itemsDetected Json?
+  createdAt     DateTime @default(now())
+
+  user        UserProfile           @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  recreations PinterestRecreation[]
+
+  @@map("inspiration_images")
+}
+
+model PinterestRecreation {
+  id             String   @id @default(cuid())
+  userId         String
+  inspirationId  String
+  matchScore     Float?
+  substitutions  Json?
+  outfitImageUrl String?
+  createdAt      DateTime @default(now())
+
+  inspiration InspirationImage @relation(fields: [inspirationId], references: [id], onDelete: Cascade)
+
+  @@map("pinterest_recreations")
+}
+
+model PackingList {
+  id          String   @id @default(cuid())
+  userId      String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  activities  String[]
+  weatherData Json?
+  createdAt   DateTime @default(now())
+
+  user    UserProfile         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  outfits PackingListOutfit[]
+
+  @@map("packing_lists")
+}
+
+model PackingListOutfit {
+  id       String   @id @default(cuid())
+  listId   String
+  day      DateTime
+  outfitId String?
+  type     String
+
+  list PackingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@map("packing_list_outfits")
+}
+
+model ShoppingItem {
+  id                  String   @id @default(cuid())
+  userId              String
+  productUrl          String?
+  productImageUrl     String?
+  productName         String?
+  analysis            Json?
+  outfitOpportunities Int?
+  styleMatchScore     Float?
+  valueScore          Float?
+  createdAt           DateTime @default(now())
+
+  user UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("shopping_items")
+}
+
+model CoupleConnection {
+  id          String    @id @default(cuid())
+  userIdOne   String
+  userIdTwo   String
+  status      String    @default("pending")
+  connectedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  userOne  UserProfile           @relation("UserOne", fields: [userIdOne], references: [userId], onDelete: Cascade)
+  userTwo  UserProfile           @relation("UserTwo", fields: [userIdTwo], references: [userId], onDelete: Cascade)
+  sessions CoupleOutfitSession[]
+
+  @@map("couple_connections")
+}
+
+model CoupleOutfitSession {
+  id            String   @id @default(cuid())
+  coupleId      String
+  date          DateTime
+  occasion      String?
+  user1OutfitId String?
+  user2OutfitId String?
+  createdAt     DateTime @default(now())
+
+  couple CoupleConnection @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@map("couple_outfit_sessions")
+}
+
+model FeatureFlag {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+  enabled     Boolean @default(true)
+  rolloutPct  Int     @default(100)
+
+  @@map("feature_flags")
+}
+
+model AiPromptTemplate {
+  id                 String   @id @default(cuid())
+  key                String   @unique
+  systemPrompt       String
+  userPromptTemplate String
+  model              String   @default("gpt-4o")
+  version            Int      @default(1)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("ai_prompt_templates")
+}
