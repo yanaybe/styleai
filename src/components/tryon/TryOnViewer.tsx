@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, User, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -22,6 +21,12 @@ interface OutfitItemData {
   };
 }
 
+interface FlatLayItem {
+  name: string;
+  category: string;
+  imageUrl: string;
+}
+
 interface TryOnViewerProps {
   outfitId: string;
   outfitName: string;
@@ -32,12 +37,12 @@ interface TryOnViewerProps {
 
 const CATEGORY_ORDER = ["JACKETS", "TOPS", "DRESSES", "SKIRTS", "PANTS", "SHORTS", "SHOES", "BAGS", "JEWELRY", "ACCESSORIES"];
 
-export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning }: TryOnViewerProps) {
-  const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
+export function TryOnViewer({ outfitId, outfitName, items, reasoning }: TryOnViewerProps) {
+  const [flatLayItems, setFlatLayItems] = useState<FlatLayItem[] | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<number>(0);
-  const [view, setView] = useState<"items" | "tryon">("items");
+  const [view, setView] = useState<"items" | "flatlay">("items");
 
   const sortedItems = [...items].sort((a, b) => {
     const ai = CATEGORY_ORDER.indexOf(a.item.category);
@@ -45,11 +50,7 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
 
-  async function generateTryOn() {
-    if (!avatarUrl) {
-      toast.error("Upload your full-body photo in the 'Me' tab first.");
-      return;
-    }
+  async function generateFlatLay() {
     setGenerating(true);
     setError(null);
     try {
@@ -57,23 +58,23 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
       const res = await fetch("/api/tryon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outfitId, avatarUrl, itemIds }),
+        body: JSON.stringify({ outfitId, itemIds }),
       });
       const data = await res.json();
 
       if (!res.ok) {
-        const msg = data.detail ? `${data.error}: ${JSON.stringify(data.detail)}` : (data.error ?? "Try-on failed");
+        const msg = data.error ?? "Failed to build outfit view";
         setError(msg);
         toast.error(msg);
         return;
       }
 
-      setTryOnUrl(data.tryOnUrl);
-      setView("tryon");
-      toast.success("Try-on ready! ✨");
+      setFlatLayItems(data.flatLayItems);
+      setView("flatlay");
+      toast.success("Outfit ready ✨");
     } catch {
       setError("Something went wrong. Try again.");
-      toast.error("Try-on failed");
+      toast.error("Failed");
     } finally {
       setGenerating(false);
     }
@@ -84,47 +85,51 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
   return (
     <div className="space-y-4">
       {/* View toggle */}
-      {tryOnUrl && (
+      {flatLayItems && (
         <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
           <button
             onClick={() => setView("items")}
             className={cn("flex-1 py-1.5 text-xs font-medium rounded-lg transition-all", view === "items" ? "bg-white shadow-sm" : "text-muted-foreground")}
           >
-            Individual items
+            Browse items
           </button>
           <button
-            onClick={() => setView("tryon")}
-            className={cn("flex-1 py-1.5 text-xs font-medium rounded-lg transition-all", view === "tryon" ? "bg-white shadow-sm" : "text-muted-foreground")}
+            onClick={() => setView("flatlay")}
+            className={cn("flex-1 py-1.5 text-xs font-medium rounded-lg transition-all", view === "flatlay" ? "bg-white shadow-sm" : "text-muted-foreground")}
           >
-            Try-on ✨
+            Outfit flat-lay ✨
           </button>
         </div>
       )}
 
-      {/* Try-on view */}
-      {view === "tryon" && tryOnUrl && (
-        <div className="relative rounded-2xl overflow-hidden border border-primary/20 shadow-soft">
-          <Image
-            src={tryOnUrl}
-            alt="Virtual try-on"
-            width={400}
-            height={600}
-            className="w-full object-cover"
-            style={{ aspectRatio: "2/3" }}
-          />
-          <div className="absolute bottom-3 left-3 right-3">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2">
-              <p className="text-xs font-medium">{outfitName}</p>
-              <p className="text-[10px] text-muted-foreground">You look stunning, Talia ✨</p>
-            </div>
+      {/* Flat-lay grid */}
+      {view === "flatlay" && flatLayItems && (
+        <div className="space-y-2">
+          <div className={cn(
+            "grid gap-2",
+            flatLayItems.length === 1 ? "grid-cols-1" :
+            flatLayItems.length === 2 ? "grid-cols-2" :
+            flatLayItems.length === 3 ? "grid-cols-3" : "grid-cols-2"
+          )}>
+            {flatLayItems.map((fi, i) => (
+              <div key={i} className="rounded-2xl overflow-hidden border border-border bg-secondary/20">
+                <div className="relative aspect-square">
+                  <Image src={fi.imageUrl} alt={fi.name} fill className="object-contain p-2" />
+                </div>
+                <div className="px-2 pb-2">
+                  <p className="text-xs font-medium truncate">{fi.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{fi.category.charAt(0) + fi.category.slice(1).toLowerCase()}</p>
+                </div>
+              </div>
+            ))}
           </div>
+          <p className="text-xs text-muted-foreground text-center">{outfitName} · {flatLayItems.length} pieces</p>
         </div>
       )}
 
       {/* Individual items view */}
       {view === "items" && (
         <div className="space-y-3">
-          {/* Big selected item */}
           {currentItem && (
             <div className="relative rounded-2xl overflow-hidden border border-border bg-secondary/20">
               <div className="relative" style={{ aspectRatio: "1/1" }}>
@@ -150,7 +155,6 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
                 </div>
               </div>
 
-              {/* Navigation arrows */}
               {sortedItems.length > 1 && (
                 <>
                   <button
@@ -170,7 +174,6 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
             </div>
           )}
 
-          {/* Item strip */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             {sortedItems.map((oi, i) => (
               <button
@@ -194,56 +197,31 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            {selectedItem + 1} of {sortedItems.length} items · tap arrows or thumbnails to browse
+            {selectedItem + 1} of {sortedItems.length} items · tap arrows to browse
           </p>
         </div>
       )}
 
-      {/* Reasoning */}
       {reasoning && (
         <p className="text-xs text-muted-foreground leading-relaxed px-1 line-clamp-3">{reasoning}</p>
       )}
 
-      {/* Try-on button */}
-      {!tryOnUrl && (
-        <div className="space-y-2">
-          {!avatarUrl ? (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-medium text-amber-700">Upload your photo first</p>
-                <p className="text-[10px] text-amber-600 mt-0.5">Go to the &quot;Me&quot; tab in the menu to add your full-body photo.</p>
-                <Link href="/avatar" className="text-[10px] text-primary underline mt-1 block">Upload photo →</Link>
-              </div>
-            </div>
-          ) : (
-            <Button
-              onClick={generateTryOn}
-              disabled={generating}
-              className="w-full gap-2 shadow-rose"
-            >
-              {generating
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Dressing you up...</>
-                : <><User className="w-4 h-4" /> Try this on me ✨</>}
-            </Button>
-          )}
+      <Button
+        onClick={generateFlatLay}
+        disabled={generating}
+        className={cn("w-full gap-2 shadow-rose", flatLayItems ? "hidden" : "")}
+      >
+        {generating
+          ? <><Loader2 className="w-4 h-4 animate-spin" /> Building outfit view...</>
+          : <><Sparkles className="w-4 h-4" /> See this outfit ✨</>}
+      </Button>
 
-          {error && (
-            <p className="text-xs text-destructive text-center">{error}</p>
-          )}
-        </div>
-      )}
+      {error && <p className="text-xs text-destructive text-center">{error}</p>}
 
-      {tryOnUrl && (
-        <Button
-          onClick={generateTryOn}
-          disabled={generating}
-          variant="outline"
-          size="sm"
-          className="w-full gap-2 text-xs"
-        >
+      {flatLayItems && (
+        <Button onClick={generateFlatLay} disabled={generating} variant="outline" size="sm" className="w-full gap-2 text-xs">
           {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-          Regenerate try-on
+          Refresh
         </Button>
       )}
     </div>
