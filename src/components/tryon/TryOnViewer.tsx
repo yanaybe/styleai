@@ -62,8 +62,9 @@ export function TryOnViewer({ outfitId, outfitName, items, avatarUrl, reasoning 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Try-on failed");
-        toast.error(data.error ?? "Try-on failed");
+        const msg = data.detail ? `${data.error}: ${JSON.stringify(data.detail)}` : (data.error ?? "Try-on failed");
+        setError(msg);
+        toast.error(msg);
         return;
       }
 

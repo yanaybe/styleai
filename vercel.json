@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/app/api/tryon/route.ts": {
+      "maxDuration": 120
+    }
+  }
+}
