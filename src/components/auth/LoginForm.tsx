@@ -1,38 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Sparkles, Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
 
 export function LoginForm() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error("Hmm, that doesn't seem right. Check your email and password.");
+      setError("Email or password is incorrect. Try again.");
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // Hard redirect so cookies are fully set before server renders
+    window.location.href = "/dashboard";
   }
 
   return (
@@ -57,6 +56,7 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
+              autoComplete="email"
               className="h-11"
             />
           </div>
@@ -71,6 +71,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
                 className="h-11 pr-10"
               />
               <button
@@ -83,15 +84,21 @@ export function LoginForm() {
             </div>
           </div>
 
+          {error && (
+            <div className="bg-destructive/8 border border-destructive/20 rounded-xl px-4 py-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
           <Button type="submit" className="w-full h-11 shadow-rose" disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Let's style your day"}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          New here?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-primary font-medium hover:underline">
-            Create your account
+            Sign up
           </Link>
         </p>
       </div>

@@ -2,28 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Sparkles, Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-
-export const dynamic = "force-dynamic";
 
 export function SignupForm() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -35,19 +32,21 @@ export function SignupForm() {
     });
 
     if (error) {
-      toast.error(error.message);
+      setError(error.message);
       setLoading(false);
       return;
     }
 
     if (data.session) {
-      router.push("/onboarding");
-      router.refresh();
+      // Email confirmation off — go straight in
+      window.location.href = "/onboarding";
       return;
     }
 
-    toast.success("Check your email to confirm your account ✨");
+    // Email confirmation on — tell them to check email
+    setError("");
     setLoading(false);
+    alert("Check your email to confirm your account, then sign in.");
   }
 
   return (
@@ -72,6 +71,7 @@ export function SignupForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
+              autoComplete="email"
               className="h-11"
             />
           </div>
@@ -87,6 +87,7 @@ export function SignupForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                autoComplete="new-password"
                 className="h-11 pr-10"
               />
               <button
@@ -98,6 +99,12 @@ export function SignupForm() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-destructive/8 border border-destructive/20 rounded-xl px-4 py-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
           <Button type="submit" className="w-full h-11 shadow-rose" disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create my account"}
