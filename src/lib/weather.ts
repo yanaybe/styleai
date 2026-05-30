@@ -42,7 +42,7 @@ export async function getWeatherForecast(
   if (!process.env.TOMORROW_IO_API_KEY) return null;
 
   try {
-    const location = `${city}, ${country}`;
+    const location = city;
     const res = await fetch(
       `https://api.tomorrow.io/v4/weather/forecast?location=${encodeURIComponent(location)}&timesteps=1d&apikey=${process.env.TOMORROW_IO_API_KEY}`,
       { next: { revalidate: 3600 } }
