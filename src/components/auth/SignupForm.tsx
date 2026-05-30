@@ -32,12 +32,12 @@ export function SignupForm() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
       },
     });
 
@@ -47,8 +47,16 @@ export function SignupForm() {
       return;
     }
 
-    router.push("/onboarding");
-    router.refresh();
+    // If session exists → email confirmation is disabled, go straight to onboarding
+    if (data.session) {
+      router.push("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    // Email confirmation is enabled → tell user to check email
+    toast.success("Check your email to confirm your account, then come back and sign in!");
+    setLoading(false);
   }
 
   async function handleGoogleSignup() {
