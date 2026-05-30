@@ -205,7 +205,7 @@ export function WardrobeUploadPage() {
         <Upload className="w-10 h-10 text-primary/30 mx-auto mb-3" />
         <p className="font-heading text-lg font-semibold mb-1">Drop photos here</p>
         <p className="text-sm text-muted-foreground mb-4">Select as many as you want — drag & drop or click to browse</p>
-        <Button variant="outline" className="gap-2" onClick={(e) => e.stopPropagation()}>
+        <Button variant="outline" className="gap-2" onClick={(e) => { e.stopPropagation(); document.getElementById("fileInput")?.click(); }}>
           <Upload className="w-4 h-4" /> Choose photos
         </Button>
       </div>
