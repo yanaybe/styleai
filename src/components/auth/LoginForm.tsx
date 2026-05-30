@@ -30,8 +30,10 @@ export function LoginForm() {
       return;
     }
 
-    // Hard redirect so cookies are fully set before server renders
-    window.location.href = "/dashboard";
+    // Wait for cookie to flush, then hard redirect
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 200);
   }
 
   return (
