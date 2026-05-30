@@ -32,18 +32,8 @@ export async function proxy(request: NextRequest) {
   const isPublic = publicRoutes.some((route) => request.nextUrl.pathname === route)
     || request.nextUrl.pathname.startsWith("/api/");
 
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
+  // Temporarily disabled auth guard to debug sign-in flow
+  // Each page will handle its own auth check
   return supabaseResponse;
 }
 
