@@ -68,6 +68,33 @@ export function WardrobeUploadPage() {
     setFiles((prev) => [...prev, ...items]);
   }, []);
 
+  async function compressImage(file: File): Promise<File> {
+    return new Promise((resolve) => {
+      const img = document.createElement("img");
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 1600;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], file.name, { type: "image/jpeg" }) : file),
+          "image/jpeg",
+          0.82
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     addFiles(Array.from(e.dataTransfer.files));
@@ -91,8 +118,9 @@ export function WardrobeUploadPage() {
         try {
           // Upload
           setFiles((prev) => prev.map((f) => f.id === item.id ? { ...f, status: "uploading" } : f));
+          const compressed = await compressImage(item.file);
           const fd = new FormData();
-          fd.append("file", item.file);
+          fd.append("file", compressed);
           const upRes = await fetch("/api/upload/wardrobe", { method: "POST", body: fd });
           if (!upRes.ok) {
             const body = await upRes.json().catch(() => ({}));
