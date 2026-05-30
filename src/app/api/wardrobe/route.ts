@@ -46,6 +46,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    await prisma.userProfile.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+    });
+
     const item = await prisma.wardrobeItem.create({
       data: {
         ...parsed.data,
