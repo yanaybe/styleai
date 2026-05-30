@@ -5,27 +5,82 @@ import { usePathname } from "next/navigation";
 import {
   Sparkles, Home, Shirt, Calendar, History, Palette,
   Camera, BarChart2, Settings, LogOut, Heart,
-  ShoppingBag, Luggage, Users,
+  ShoppingBag, Luggage,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const navItems = [
-  { href: "/dashboard",       icon: Home,        label: "Today" },
-  { href: "/wardrobe",        icon: Shirt,        label: "My Closet" },
-  { href: "/outfits",         icon: Calendar,     label: "Outfit Calendar" },
-  { href: "/outfits/history", icon: History,      label: "History" },
-  { href: "/style-profile",   icon: Palette,      label: "Style Profile" },
-  { href: "/inspiration",     icon: Camera,       label: "Inspiration" },
-  { href: "/shopping",        icon: ShoppingBag,  label: "Shopping" },
-  { href: "/packing",         icon: Luggage,      label: "Packing" },
-  { href: "/couples",         icon: Heart,        label: "Couples" },
-  { href: "/analytics",       icon: BarChart2,    label: "Analytics" },
+  {
+    href: "/dashboard",
+    icon: Home,
+    label: "Today",
+    description: "Daily outfit hub & overview",
+  },
+  {
+    href: "/wardrobe",
+    icon: Shirt,
+    label: "My Closet",
+    description: "Upload & manage your wardrobe",
+  },
+  {
+    href: "/outfits",
+    icon: Calendar,
+    label: "Outfit Calendar",
+    description: "Plan 14 days of outfits with AI",
+  },
+  {
+    href: "/outfits/history",
+    icon: History,
+    label: "History",
+    description: "Past outfits & your ratings",
+  },
+  {
+    href: "/style-profile",
+    icon: Palette,
+    label: "Style Profile",
+    description: "Colors, style & fit preferences",
+  },
+  {
+    href: "/inspiration",
+    icon: Camera,
+    label: "Inspiration",
+    description: "Recreate any look from your closet",
+  },
+  {
+    href: "/shopping",
+    icon: ShoppingBag,
+    label: "Shopping",
+    description: "What's missing this season",
+  },
+  {
+    href: "/packing",
+    icon: Luggage,
+    label: "Packing",
+    description: "Trip wardrobe planner",
+  },
+  {
+    href: "/couples",
+    icon: Heart,
+    label: "Couples",
+    description: "Coordinate looks with your partner",
+  },
+  {
+    href: "/analytics",
+    icon: BarChart2,
+    label: "Analytics",
+    description: "Wardrobe stats & insights",
+  },
 ];
 
 const bottomItems = [
-  { href: "/settings", icon: Settings, label: "Settings" },
+  {
+    href: "/settings",
+    icon: Settings,
+    label: "Settings",
+    description: "Profile, WhatsApp & preferences",
+  },
 ];
 
 export function Sidebar() {
@@ -46,7 +101,10 @@ export function Sidebar() {
         <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-primary" />
         </div>
-        <span className="font-heading text-lg font-semibold tracking-tight">StyleAI</span>
+        <div>
+          <span className="font-heading text-lg font-semibold tracking-tight leading-none block">StyleAI</span>
+          <span className="text-[10px] text-muted-foreground">Talia&apos;s stylist ✨</span>
+        </div>
       </div>
 
       {/* Nav */}
@@ -61,14 +119,22 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+                "group flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all duration-150",
                 active
                   ? "bg-primary text-primary-foreground shadow-rose"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {item.label}
+              <item.icon className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none">{item.label}</p>
+                <p className={cn(
+                  "text-[10px] mt-0.5 leading-snug truncate transition-colors",
+                  active ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                )}>
+                  {item.description}
+                </p>
+              </div>
             </Link>
           );
         })}
@@ -79,30 +145,34 @@ export function Sidebar() {
         {bottomItems.map((item) => {
           const active = pathname === item.href;
           return (
-            <Link key={item.href} href={item.href}
+            <Link
+              key={item.href}
+              href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
-                active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                "flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all duration-150",
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
               )}
             >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {item.label}
+              <item.icon className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium leading-none">{item.label}</p>
+                <p className={cn("text-[10px] mt-0.5", active ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
+                  {item.description}
+                </p>
+              </div>
             </Link>
           );
         })}
+
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-150"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-150"
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign out
         </button>
-        <div className="px-3 py-2 mt-1">
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/8 border border-primary/15">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <p className="text-xs text-primary font-medium">StyleAI ✨</p>
-          </div>
-        </div>
       </div>
     </aside>
   );
