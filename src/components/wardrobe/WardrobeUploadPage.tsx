@@ -10,13 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Upload,
-  X,
-  Sparkles,
-  CheckCircle,
-  Loader2,
-  ArrowLeft,
-  RefreshCw,
+  Upload, X, Sparkles, CheckCircle, Loader2, ArrowLeft, RefreshCw, Library, Shirt,
 } from "lucide-react";
 import { WARDROBE_CATEGORIES } from "@/types";
 import type { WardrobeCategory } from "@/types";
@@ -24,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
+import { CLOTHING_LIBRARY } from "@/lib/clothing-library";
 
 interface AIAnalysis {
   name: string;
@@ -44,7 +39,7 @@ const SEASONS = ["spring", "summer", "fall", "winter", "all"];
 
 export function WardrobeUploadPage() {
   const router = useRouter();
-
+  const [tab, setTab] = useState<"upload" | "library">("upload");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -52,6 +47,8 @@ export function WardrobeUploadPage() {
   const [saving, setSaving] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [selectedLibraryItems, setSelectedLibraryItems] = useState<Set<string>>(new Set());
+  const [addingLibrary, setAddingLibrary] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -59,313 +56,341 @@ export function WardrobeUploadPage() {
     colorPrimary: "",
     brand: "",
     formalityLevel: "casual",
-    season: ["all"] as string[],
-    styleTags: [] as string[],
-    notes: "",
+    season: ["all"],
+    styleTags: "",
   });
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) processFile(file);
+    const f = e.dataTransfer.files[0];
+    if (f?.type.startsWith("image/")) processImage(f);
   }, []);
 
-  function processFile(file: File) {
-    setImageFile(file);
+  function processImage(f: File) {
+    setImageFile(f);
     const reader = new FileReader();
     reader.onload = (e) => setImagePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(f);
+    setAnalysis(null);
   }
 
-  async function uploadAndAnalyze() {
-    if (!imageFile || !imagePreview) return;
-
+  async function uploadImage() {
+    if (!imageFile) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", imageFile);
-
-      const uploadRes = await fetch("/api/upload/wardrobe", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error("Upload failed");
-      const { url, thumbnailUrl } = await uploadRes.json();
+      const fd = new FormData();
+      fd.append("file", imageFile);
+      const res = await fetch("/api/upload/wardrobe", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
       setUploadedImageUrl(url);
-
-      setAnalyzing(true);
-      const analyzeRes = await fetch("/api/wardrobe/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: url }),
-      });
-
-      if (!analyzeRes.ok) throw new Error("Analysis failed");
-      const aiData: AIAnalysis = await analyzeRes.json();
-      setAnalysis(aiData);
-
-      setForm({
-        name: aiData.name || "",
-        category: aiData.category || "",
-        colorPrimary: aiData.colorPrimary || "",
-        brand: aiData.brand || "",
-        formalityLevel: aiData.formalityLevel || "casual",
-        season: aiData.season?.length ? aiData.season : ["all"],
-        styleTags: aiData.styleTags || [],
-        notes: "",
-      });
-
-      toast.success("AI analysis complete! Review and save.");
-    } catch (err) {
-      toast.error("Something went wrong. Please try again.");
+      toast.success("Photo uploaded");
+    } catch {
+      toast.error("Upload failed");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function analyzeImage() {
+    if (!uploadedImageUrl) return;
+    setAnalyzing(true);
+    try {
+      const res = await fetch("/api/wardrobe/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: uploadedImageUrl }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setAnalysis(data);
+      setForm((p) => ({
+        ...p,
+        name: data.name,
+        category: data.category,
+        colorPrimary: data.colorPrimary,
+        brand: data.brand ?? "",
+        formalityLevel: data.formalityLevel,
+        season: data.season,
+        styleTags: data.styleTags?.join(", ") ?? "",
+      }));
+    } catch {
+      toast.error("Analysis failed");
+    } finally {
       setAnalyzing(false);
     }
   }
 
   async function saveItem() {
-    if (!uploadedImageUrl || !form.name || !form.category) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
+    if (!analysis || !uploadedImageUrl) return;
     setSaving(true);
     try {
       const res = await fetch("/api/wardrobe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
           imageUrl: uploadedImageUrl,
-          aiAnalysis: analysis,
+          ...form,
+          styleTags: form.styleTags.split(",").map((t) => t.trim()).filter(Boolean),
         }),
       });
-
-      if (!res.ok) throw new Error("Save failed");
-
-      toast.success("Added to your closet!");
+      if (!res.ok) throw new Error();
+      toast.success("Item saved to closet! ✨");
       router.push("/wardrobe");
     } catch {
-      toast.error("Failed to save. Please try again.");
+      toast.error("Failed to save");
     } finally {
       setSaving(false);
     }
   }
 
-  function toggleSeason(s: string) {
-    setForm((prev) => ({
-      ...prev,
-      season: prev.season.includes(s) ? prev.season.filter((x) => x !== s) : [...prev.season, s],
-    }));
+  async function addLibraryItems() {
+    if (selectedLibraryItems.size === 0) {
+      toast.error("Select at least one item");
+      return;
+    }
+    setAddingLibrary(true);
+    try {
+      const items = Array.from(selectedLibraryItems)
+        .map((id) => CLOTHING_LIBRARY.find((i) => i.id === id))
+        .filter(Boolean);
+
+      const res = await fetch("/api/wardrobe/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`Added ${selectedLibraryItems.size} items to your closet! ✨`);
+      router.push("/wardrobe");
+    } catch {
+      toast.error("Failed to add items");
+    } finally {
+      setAddingLibrary(false);
+    }
   }
 
+  const selectedCount = selectedLibraryItems.size;
+  const groupedLibrary = CLOTHING_LIBRARY.reduce(
+    (acc, item) => {
+      if (!acc[item.category]) acc[item.category] = [];
+      acc[item.category].push(item);
+      return acc;
+    },
+    {} as Record<string, typeof CLOTHING_LIBRARY>
+  );
+
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Link href="/wardrobe">
-          <Button variant="ghost" size="icon" className="w-9 h-9">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
+    <div className="space-y-5 max-w-2xl">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-semibold">Add to Closet</h1>
-          <p className="text-sm text-muted-foreground">Upload a photo — AI will tag everything automatically</p>
+          <p className="text-sm text-muted-foreground mt-1">Upload photos or pick from the library.</p>
         </div>
+        <Link href="/wardrobe">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to closet
+          </Button>
+        </Link>
       </div>
 
-      {/* Upload zone */}
-      {!imagePreview ? (
-        <div
-          onDrop={handleFileDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className="border-2 border-dashed border-primary/25 rounded-3xl p-12 text-center cursor-pointer hover:border-primary/50 hover:bg-secondary/30 transition-all"
-          onClick={() => document.getElementById("fileInput")?.click()}
+      {/* Tabs */}
+      <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl w-fit">
+        <button
+          onClick={() => setTab("upload")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            tab === "upload" ? "bg-white shadow-sm" : "text-muted-foreground"
+          )}
         >
-          <input
-            id="fileInput"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
-          />
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Upload className="w-7 h-7 text-primary" />
-          </div>
-          <p className="font-heading text-xl font-semibold mb-1">Drop your photo here</p>
-          <p className="text-sm text-muted-foreground">or click to browse — JPG, PNG up to 10MB</p>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          {/* Image preview + AI panel */}
-          <div className="flex flex-col sm:flex-row gap-5">
-            <div className="relative w-full sm:w-56 h-56 rounded-2xl overflow-hidden border border-border shrink-0">
-              <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-              <button
-                onClick={() => { setImagePreview(null); setImageFile(null); setAnalysis(null); setUploadedImageUrl(null); }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+          <Upload className="w-4 h-4" /> Upload photo
+        </button>
+        <button
+          onClick={() => setTab("library")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            tab === "library" ? "bg-white shadow-sm" : "text-muted-foreground"
+          )}
+        >
+          <Library className="w-4 h-4" /> Library ({CLOTHING_LIBRARY.length})
+        </button>
+      </div>
 
-            <div className="flex-1">
-              {!analysis && !uploading && !analyzing && (
-                <Card className="p-6 border-dashed border-primary/20 text-center h-full flex flex-col items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-primary/40 mb-3" />
-                  <p className="font-medium text-sm mb-1">Ready to analyze</p>
-                  <p className="text-xs text-muted-foreground mb-4">AI will auto-detect category, color, style, and more</p>
-                  <Button onClick={uploadAndAnalyze} className="shadow-rose gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    Analyze with AI
-                  </Button>
-                </Card>
-              )}
-
-              {(uploading || analyzing) && (
-                <Card className="p-6 h-full flex flex-col items-center justify-center border-primary/20">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
-                  <p className="font-medium text-sm">{uploading ? "Uploading..." : "AI is analyzing your item..."}</p>
-                  <p className="text-xs text-muted-foreground mt-1">This takes just a moment</p>
-                </Card>
-              )}
-
-              {analysis && !uploading && !analyzing && (
-                <Card className="p-4 border border-primary/20 bg-secondary/30 h-full">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    <span className="text-sm font-medium">AI Analysis Complete</span>
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                      {Math.round(analysis.confidence * 100)}% confident
-                    </Badge>
-                  </div>
-                  <div className="space-y-1.5 text-xs text-muted-foreground">
-                    {analysis.colorPrimary && <p>🎨 Color: <span className="text-foreground">{analysis.colorPrimary}</span></p>}
-                    {analysis.pattern && <p>✦ Pattern: <span className="text-foreground">{analysis.pattern}</span></p>}
-                    {analysis.material && <p>🧵 Material: <span className="text-foreground">{analysis.material}</span></p>}
-                    {analysis.styleTags?.length > 0 && (
-                      <div className="flex gap-1 flex-wrap mt-2">
-                        {analysis.styleTags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={uploadAndAnalyze}
-                    className="mt-3 flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    Re-analyze
-                  </button>
-                </Card>
-              )}
-            </div>
-          </div>
-
-          {/* Form — always shown after image upload */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Item name *</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g. White linen blazer"
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="brand">Brand</Label>
-                <Input
-                  id="brand"
-                  placeholder="e.g. Zara, H&M"
-                  value={form.brand}
-                  onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
-                  className="h-10"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Category *</Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(v) => setForm((p) => ({ ...p, category: v as WardrobeCategory }))}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WARDROBE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.emoji} {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Formality</Label>
-                <Select
-                  value={form.formalityLevel}
-                  onValueChange={(v) => setForm((p) => ({ ...p, formalityLevel: v ?? "" }))}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FORMALITY_LEVELS.map((f) => (
-                      <SelectItem key={f} value={f}>{f.replace("_", " ")}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Season</Label>
-              <div className="flex gap-2 flex-wrap">
-                {SEASONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => toggleSeason(s)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-sm border transition-all capitalize",
-                      form.season.includes(s)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card border-border text-muted-foreground hover:border-primary/40"
-                    )}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea
-                id="notes"
-                placeholder="e.g. Great for summer evenings, slightly oversized..."
-                value={form.notes}
-                onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                className="resize-none h-20"
-              />
-            </div>
-
-            <Button
-              onClick={saveItem}
-              className="w-full h-11 shadow-rose"
-              disabled={saving || !uploadedImageUrl}
+      {/* UPLOAD TAB */}
+      {tab === "upload" && (
+        <div className="space-y-4">
+          {!imagePreview ? (
+            <div
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onClick={() => document.getElementById("fileInput")?.click()}
+              className="border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer hover:border-primary/40 hover:bg-secondary/20 transition-all"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save to my closet"}
-            </Button>
+              <input
+                id="fileInput"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && processImage(e.target.files[0])}
+              />
+              <Upload className="w-12 h-12 text-primary/30 mx-auto mb-4" />
+              <p className="font-heading text-lg font-semibold mb-1">Add a clothing photo</p>
+              <p className="text-sm text-muted-foreground mb-4">Drag & drop or click to browse</p>
+              <Button variant="outline" className="gap-2">
+                <Upload className="w-4 h-4" /> Choose photo
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20">
+                <Image
+                  src={imagePreview}
+                  alt="Preview"
+                  width={400}
+                  height={400}
+                  className="w-full object-cover"
+                />
+                <button
+                  onClick={() => {
+                    setImagePreview(null);
+                    setImageFile(null);
+                    setAnalysis(null);
+                  }}
+                  className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!uploadedImageUrl && (
+                <Button onClick={uploadImage} disabled={uploading} className="w-full gap-2 shadow-rose">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Upload photo
+                </Button>
+              )}
+
+              {uploadedImageUrl && !analysis && (
+                <Button onClick={analyzeImage} disabled={analyzing} className="w-full gap-2 shadow-rose">
+                  {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Analyze with AI
+                </Button>
+              )}
+
+              {analysis && (
+                <div className="space-y-3 p-4 bg-secondary/40 rounded-2xl border border-border">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Name</Label>
+                      <Input
+                        value={form.name}
+                        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                        className="h-9 text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Category</Label>
+                      <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v as WardrobeCategory }))}>
+                        <SelectTrigger className="h-9 text-sm mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WARDROBE_CATEGORIES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Color</Label>
+                      <Input
+                        value={form.colorPrimary}
+                        onChange={(e) => setForm((p) => ({ ...p, colorPrimary: e.target.value }))}
+                        className="h-9 text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Brand</Label>
+                      <Input
+                        value={form.brand}
+                        onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
+                        className="h-9 text-sm mt-1"
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={saveItem} disabled={saving} className="w-full gap-2 shadow-rose">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Save to closet
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* LIBRARY TAB */}
+      {tab === "library" && (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            {Object.entries(groupedLibrary).map(([category, items]) => (
+              <div key={category}>
+                <h3 className="font-heading text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Shirt className="w-4 h-4 text-primary" />
+                  {category}
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {items.map((item) => {
+                    const isSelected = selectedLibraryItems.has(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          const newSelected = new Set(selectedLibraryItems);
+                          if (isSelected) newSelected.delete(item.id);
+                          else newSelected.add(item.id);
+                          setSelectedLibraryItems(newSelected);
+                        }}
+                        className={cn(
+                          "rounded-2xl overflow-hidden border-2 transition-all relative",
+                          isSelected ? "border-primary shadow-rose" : "border-border hover:border-primary/40"
+                        )}
+                      >
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          width={150}
+                          height={150}
+                          className="w-full aspect-square object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors" />
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2">
+                          <p className="text-xs font-medium truncate">{item.name}</p>
+                          <p className="text-[10px] opacity-75">{item.color}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
+
+          {selectedCount > 0 && (
+            <div className="sticky bottom-0 bg-white border-t border-border p-4 rounded-t-2xl shadow-lg flex items-center justify-between">
+              <p className="font-medium">{selectedCount} item{selectedCount !== 1 ? "s" : ""} selected</p>
+              <Button onClick={addLibraryItems} disabled={addingLibrary} className="gap-2 shadow-rose">
+                {addingLibrary ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Add to closet
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
